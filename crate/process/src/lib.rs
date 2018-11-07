@@ -3,6 +3,8 @@
 #![feature(const_fn)]
 #![feature(linkage)]
 #![feature(nll)]
+#![feature(vec_resize_default)]
+#![feature(asm)]
 
 extern crate alloc;
 #[macro_use]
@@ -19,6 +21,7 @@ mod processor;
 pub mod scheduler;
 pub mod thread;
 mod event_hub;
+mod interrupt;
 
 pub use process_manager::*;
 pub use processor::Processor;

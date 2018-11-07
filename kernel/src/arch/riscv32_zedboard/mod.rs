@@ -26,15 +26,18 @@ pub extern fn rust_main(hartid: usize, dtb: usize, hart_mask: usize) -> ! {
     memory::init();
     timer::init();
 
+    ::process::init();
+    ::thread::spawn(::fs::shell);
+
     unsafe { cpu::start_others(hart_mask); }
     ::kmain();
 }
 
 fn others_main() -> ! {
     interrupt::init();
+    memory::init_other();
     timer::init();
-    cpu::send_ipi(0);
-    loop { }
+    ::kmain();
 }
 
 #[cfg(feature = "no_bbl")]

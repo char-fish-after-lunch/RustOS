@@ -5,20 +5,22 @@ use arch::cpu;
 pub static mut TICK: usize = 0;
 
 pub fn timer() {
-    processor().tick();
     if cpu::id() == 0 {
         unsafe { TICK += 1; }
     }
-}
-
-pub fn before_return() {
+    processor().tick();
 }
 
 pub fn error(tf: &TrapFrame) -> ! {
+    error!("{:#x?}", tf);
     let pid = processor().pid();
-    error!("On CPU{} Process {}:\n{:#x?}", cpu::id(), pid, tf);
+    error!("On CPU{} Process {}", cpu::id(), pid);
 
     processor().manager().exit(pid, 0x100);
     processor().yield_now();
     unreachable!();
+}
+
+pub fn serial(c: char) {
+    ::console::CONSOLE_INPUT.push(c);
 }

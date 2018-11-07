@@ -15,7 +15,6 @@ struct Process {
 
 pub type Pid = usize;
 type ExitCode = usize;
-const MAX_PROC_NUM: usize = 32;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Status {
@@ -36,25 +35,27 @@ pub trait Context {
 }
 
 pub struct ProcessManager {
-    procs: [Mutex<Option<Process>>; MAX_PROC_NUM],
+    procs: Vec<Mutex<Option<Process>>>,
     scheduler: Mutex<Box<Scheduler>>,
-    wait_queue: [Mutex<Vec<Pid>>; MAX_PROC_NUM],
+    wait_queue: Vec<Mutex<Vec<Pid>>>,
     event_hub: Mutex<EventHub<Event>>,
+    exit_handler: fn(Pid),
 }
 
 impl ProcessManager {
-    pub fn new(scheduler: Box<Scheduler>) -> Self {
+    pub fn new(scheduler: Box<Scheduler>, max_proc_num: usize, exit_handler: fn(Pid)) -> Self {
         ProcessManager {
-            procs: Default::default(),
+            procs: new_vec_default(max_proc_num),
             scheduler: Mutex::new(scheduler),
-            wait_queue: Default::default(),
+            wait_queue: new_vec_default(max_proc_num),
             event_hub: Mutex::new(EventHub::new()),
+            exit_handler,
         }
     }
 
     fn alloc_pid(&self) -> Pid {
-        for i in 0..MAX_PROC_NUM {
-            if self.procs[i].lock().is_none() {
+        for (i, proc) in self.procs.iter().enumerate() {
+            if proc.lock().is_none() {
                 return i;
             }
         }
@@ -64,7 +65,7 @@ impl ProcessManager {
     /// Add a new process
     pub fn add(&self, context: Box<Context>) -> Pid {
         let pid = self.alloc_pid();
-        *self.procs[pid].lock() = Some(Process {
+        *(&self.procs[pid]).lock() = Some(Process {
             id: pid,
             status: Status::Ready,
             status_after_stop: Status::Ready,
@@ -102,22 +103,22 @@ impl ProcessManager {
             .expect("failed to select a runnable process");
         scheduler.remove(pid);
         let mut proc_lock = self.procs[pid].lock();
-        let mut proc = proc_lock.as_mut().unwrap();
+        let mut proc = proc_lock.as_mut().expect("process not exist");
         proc.status = Status::Running(cpu_id);
-        (pid, proc.context.take().unwrap())
+        (pid, proc.context.take().expect("context not exist"))
     }
 
     /// Called by Processor to finish running a process
     /// and give its context back.
     pub fn stop(&self, pid: Pid, context: Box<Context>) {
         let mut proc_lock = self.procs[pid].lock();
-        let mut proc = proc_lock.as_mut().unwrap();
+        let mut proc = proc_lock.as_mut().expect("process not exist");
         proc.status = proc.status_after_stop.clone();
         proc.status_after_stop = Status::Ready;
         proc.context = Some(context);
         match proc.status {
             Status::Ready => self.scheduler.lock().insert(pid),
-            Status::Exited(_) => proc.context = None,
+            Status::Exited(_) => self.exit_handler(pid, proc),
             _ => {}
         }
     }
@@ -127,7 +128,7 @@ impl ProcessManager {
     fn set_status(&self, pid: Pid, status: Status) {
         let mut scheduler = self.scheduler.lock();
         let mut proc_lock = self.procs[pid].lock();
-        let mut proc = proc_lock.as_mut().unwrap();
+        let mut proc = proc_lock.as_mut().expect("process not exist");
         trace!("process {} {:?} -> {:?}", pid, proc.status, status);
         match (&proc.status, &status) {
             (Status::Ready, Status::Ready) => return,
@@ -145,7 +146,7 @@ impl ProcessManager {
             _ => proc.status = status,
         }
         match proc.status {
-            Status::Exited(_) => proc.context = None,
+            Status::Exited(_) => self.exit_handler(pid, proc),
             _ => {}
         }
     }
@@ -157,7 +158,7 @@ impl ProcessManager {
 
     pub fn remove(&self, pid: Pid) {
         let mut proc_lock = self.procs[pid].lock();
-        let proc = proc_lock.as_ref().unwrap();
+        let proc = proc_lock.as_ref().expect("process not exist");
         match proc.status {
             Status::Exited(_) => *proc_lock = None,
             _ => panic!("can not remove non-exited process"),
@@ -182,8 +183,20 @@ impl ProcessManager {
 
     pub fn exit(&self, pid: Pid, code: ExitCode) {
         self.set_status(pid, Status::Exited(code));
+    }
+
+    /// Called when a process exit
+    fn exit_handler(&self, pid: Pid, proc: &mut Process) {
         for waiter in self.wait_queue[pid].lock().drain(..) {
             self.wakeup(waiter);
         }
+        proc.context = None;
+        (self.exit_handler)(pid);
     }
+}
+
+fn new_vec_default<T: Default>(size: usize) -> Vec<T> {
+    let mut vec = Vec::new();
+    vec.resize_default(size);
+    vec
 }
