@@ -587,6 +587,7 @@ static bool hart_filter_mask(const struct hart_filter *filter)
 {
   if (filter->mmu_type == NULL) return true;
   if (strcmp(filter->status, "okay")) return true;
+  if (!strcmp(filter->mmu_type, "riscv,sv32")) return false;
   if (!strcmp(filter->mmu_type, "riscv,sv39")) return false;
   if (!strcmp(filter->mmu_type, "riscv,sv48")) return false;
   printm("hart_filter_mask saw unknown hart type: status=\"%s\", mmu_type=\"%s\"\n",

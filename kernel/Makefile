@@ -24,6 +24,7 @@ smp  ?= 4
 target := $(arch)-blog_os
 kernel := target/$(target)/$(mode)/ucore
 bin := target/$(target)/$(mode)/kernel.bin
+binary := target/$(target)/$(mode)/kernel.binary
 bootimage := target/$(target)/bootimage.bin
 
 user_bin_path := ../user/target/$(arch)-ucore/debug
@@ -80,11 +81,12 @@ ifeq ($(uname), Darwin)
 prefix := x86_64-elf-
 endif
 ifeq ($(arch), riscv32)
-prefix := riscv64-unknown-elf-
+prefix := riscv32-unknown-elf-
 endif
 
 ld := $(prefix)ld
 objdump := $(prefix)objdump
+objcopy := $(prefix)objcopy
 cc := $(prefix)gcc
 as := $(prefix)as
 
@@ -132,10 +134,11 @@ else
 	 	--enable-32bit \
 	 	--enable-logo \
 	 	--disable-fp-emulation \
-	 	--host=riscv64-unknown-elf \
+	 	--host=riscv32-unknown-elf \
 	 	--with-payload=$(abspath $(kernel)) && \
 	 make && \
 	 cp bbl ../../kernel/$@
+	 $(objcopy) -O binary $@ $(binary)
 endif
 
 kernel:
