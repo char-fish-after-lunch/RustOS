@@ -10,10 +10,13 @@ _start:
 
     call rust_main
 
-    .section .bss
+    .section .data
     .align 12  #PGSHIFT
     .global bootstack
 bootstack:
     .space 4096 * 16 * 8
     .global bootstacktop
 bootstacktop:
+    .global kernelheap
+kernelheap:
+    .space 4096 * 512

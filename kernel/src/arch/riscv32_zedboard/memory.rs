@@ -1,7 +1,18 @@
 use core::{slice, mem};
-use memory::{active_table, FRAME_ALLOCATOR, init_heap, MemoryArea, MemoryAttr, MemorySet};
+use memory::{active_table, FRAME_ALLOCATOR, MemoryArea, MemoryAttr, MemorySet};
+use super::super::HEAP_ALLOCATOR;
 use super::riscv::{addr::*, register::sstatus};
 use ucore_memory::PAGE_SIZE;
+
+pub fn clear_bss() {
+    unsafe {
+        let bss_start = sbss as usize;
+        let bss_end = ebss as usize;
+        for i in bss_start..bss_end {
+            *(i as *mut u8) = 0;
+        }
+    }
+}
 
 pub fn init() {
     #[repr(align(4096))]
@@ -43,7 +54,7 @@ fn init_frame_allocator() {
 fn remap_the_kernel() {
     use consts::{KERNEL_HEAP_OFFSET, KERNEL_HEAP_SIZE};
     let mut ms = MemorySet::new_bare();
-    ms.push(MemoryArea::new_identity(0x10000000, 0x10000008, MemoryAttr::default(), "serial"));
+    ms.push(MemoryArea::new_identity(0x60000000, 0x60002000, MemoryAttr::default(), "serial"));
     ms.push(MemoryArea::new_identity(stext as usize, etext as usize, MemoryAttr::default().execute().readonly(), "text"));
     ms.push(MemoryArea::new_identity(sdata as usize, edata as usize, MemoryAttr::default(), "data"));
     ms.push(MemoryArea::new_identity(srodata as usize, erodata as usize, MemoryAttr::default().readonly(), "rodata"));
@@ -52,6 +63,13 @@ fn remap_the_kernel() {
     unsafe { SATP = ms.token(); }
     mem::forget(ms);
     info!("kernel remap end");
+}
+
+pub fn init_heap() {
+    use consts::{KERNEL_HEAP_SIZE, KERNEL_HEAP_OFFSET};
+    unsafe { HEAP_ALLOCATOR.lock().init(kernelheap as usize, KERNEL_HEAP_SIZE); }
+    
+    info!("heap init end");
 }
 
 // First core stores its SATP here.
@@ -72,4 +90,5 @@ extern {
     fn end();
     fn bootstack();
     fn bootstacktop();
+    fn kernelheap();
 }

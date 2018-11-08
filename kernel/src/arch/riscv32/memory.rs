@@ -54,6 +54,13 @@ fn remap_the_kernel() {
     info!("kernel remap end");
 }
 
+fn init_heap() {
+    use consts::KERNEL_HEAP_SIZE;
+    static mut HEAP: [u8; KERNEL_HEAP_SIZE] = [0; KERNEL_HEAP_SIZE];
+    unsafe { HEAP_ALLOCATOR.lock().init(HEAP.as_ptr() as usize, KERNEL_HEAP_SIZE); }
+    info!("heap init end");
+}
+
 // First core stores its SATP here.
 // Other cores load it later.
 static mut SATP: usize = 0;

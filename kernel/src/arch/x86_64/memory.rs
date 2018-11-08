@@ -24,6 +24,14 @@ fn init_frame_allocator(boot_info: &BootInfo) {
     }
 }
 
+fn init_heap() {
+    use consts::KERNEL_HEAP_SIZE;
+    static mut HEAP: [u8; KERNEL_HEAP_SIZE] = [0; KERNEL_HEAP_SIZE];
+    unsafe { HEAP_ALLOCATOR.lock().init(HEAP.as_ptr() as usize, KERNEL_HEAP_SIZE); }
+    info!("heap init end");
+}
+
+
 fn init_device_vm_map() {
     let mut page_table = active_table();
     // IOAPIC
