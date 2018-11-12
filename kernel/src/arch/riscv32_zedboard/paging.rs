@@ -17,11 +17,11 @@ pub fn setup_page_table(frame: Frame) {
     p2.set_recursive(RECURSIVE_INDEX, frame.clone());
 
     // Set kernel identity map
-    // 0x10000000 ~ 1K area
-    p2.map_identity(0x40, EF::VALID | EF::READABLE | EF::WRITABLE);
+    // 0x60000000 ~ 1K area
+    p2.map_identity(0x40 * 6, EF::VALID | EF::READABLE | EF::WRITABLE | EF::ACCESSED | EF::DIRTY);
     // 0x80000000 ~ 8K area
-    p2.map_identity(KERNEL_P2_INDEX, EF::VALID | EF::READABLE | EF::WRITABLE | EF::EXECUTABLE);
-    p2.map_identity(KERNEL_P2_INDEX + 1, EF::VALID | EF::READABLE | EF::WRITABLE | EF::EXECUTABLE);
+    p2.map_identity(KERNEL_P2_INDEX, EF::VALID | EF::READABLE | EF::WRITABLE | EF::EXECUTABLE | EF::ACCESSED | EF::DIRTY);
+    p2.map_identity(KERNEL_P2_INDEX + 1, EF::VALID | EF::READABLE | EF::WRITABLE | EF::EXECUTABLE | EF::ACCESSED | EF::DIRTY);
 
     use super::riscv::register::satp;
     unsafe { satp::set(satp::Mode::Sv32, 0, frame); }
@@ -37,7 +37,7 @@ impl PageTable for ActivePageTable {
     type Entry = PageEntry;
 
     fn map(&mut self, addr: usize, target: usize) -> &mut PageEntry {
-        let flags = EF::VALID | EF::READABLE | EF::WRITABLE;
+        let flags = EF::VALID | EF::READABLE | EF::WRITABLE | EF::ACCESSED | EF::DIRTY;
         let page = Page::of_addr(VirtAddr::new(addr));
         let frame = Frame::of_addr(PhysAddr::new(target as u32));
         self.0.map_to(page, frame, flags, &mut FrameAllocatorForRiscv)
@@ -101,6 +101,7 @@ impl Entry for PageEntry {
         let addr = VirtAddr::new((self as *const _ as usize) << 10);
         sfence_vma(0, addr);
     }
+    fn init(&mut self) { self.0.flags().set(EF::ACCESSED, true); self.0.flags().set(EF::DIRTY, true); }
     fn accessed(&self) -> bool { self.0.flags().contains(EF::ACCESSED) }
     fn dirty(&self) -> bool { self.0.flags().contains(EF::DIRTY) }
     fn writable(&self) -> bool { self.0.flags().contains(EF::WRITABLE) }
@@ -166,7 +167,7 @@ impl InactivePageTable for InactivePageTable0 {
             let backup = p2_table[RECURSIVE_INDEX].clone();
 
             // overwrite recursive mapping
-            p2_table[RECURSIVE_INDEX].set(self.p2_frame.clone(), EF::VALID);
+            p2_table[RECURSIVE_INDEX].set(self.p2_frame.clone(), EF::VALID | EF::ACCESSED | EF::DIRTY);
             sfence_vma_all();
 
             // execute f in the new context
@@ -220,13 +221,15 @@ impl InactivePageTable for InactivePageTable0 {
 impl InactivePageTable0 {
     fn map_kernel(&mut self) {
         let table = unsafe { &mut *ROOT_PAGE_TABLE };
-        let e0 = table[0x40];
+        let e0 = table[0x40 * 6];
         let e1 = table[KERNEL_P2_INDEX];
+        let e2 = table[KERNEL_P2_INDEX + 1];
         assert!(!e1.is_unused());
 
         self.edit(|_| {
-            table[0x40] = e0;
-            table[KERNEL_P2_INDEX].set(e1.frame(), EF::VALID | EF::GLOBAL);
+            table[0x40 * 6] = e0;
+            table[KERNEL_P2_INDEX].set(e1.frame(), EF::VALID | EF::GLOBAL | EF::ACCESSED | EF::DIRTY);
+            table[KERNEL_P2_INDEX + 1].set(e2.frame(), EF::VALID | EF::GLOBAL | EF::ACCESSED | EF::DIRTY);
         });
     }
 }

@@ -118,6 +118,7 @@ impl MemoryAttr {
         self
     }
     fn apply(&self, entry: &mut impl Entry) {
+        entry.init();
         if self.user { entry.set_user(true); }
         if self.readonly { entry.set_writable(false); }
         if self.execute { entry.set_execute(true); }

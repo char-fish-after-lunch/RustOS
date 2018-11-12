@@ -11,15 +11,20 @@ int __atomic_store_4(int *dst, int val) {
 }
 
 char __atomic_compare_exchange_4(int* dst, int* expected, int desired) {
-    int val;
+    int val, expect, result;
     // val = *dst
+    __asm__ __volatile__("lw %0, (%1)" : "=r"(expect) : "r" (expected) : "memory");
     __asm__ __volatile__("lr.w %0, (%1)" : "=r"(val) : "r"(dst) : "memory");
-    if (val == *expected) {
-        int result;
-        // Try: *dst = desired. If success, result = 0, otherwise result != 0.
-        __asm__ __volatile__("sc.w %0, %1, (%2)" : "=r"(result) : "r"(desired), "r"(dst) : "memory");
-        return result == 0;
-    }
+
+    // if (val != *expected) goto fail;
+    if (val != expect) goto __atomic_compare_exchange_4_fail;
+
+    // Try: *dst = desired. If success, result = 0, otherwise result != 0.
+    __asm__ __volatile__("sc.w %0, %1, (%2)" : "=r"(result) : "r"(desired), "r"(dst) : "memory");
+    return result == 0;
+
+    __atomic_compare_exchange_4_fail:
+
     // *expected should always equal to the previous value of *dst
     *expected = val;
     return 0;

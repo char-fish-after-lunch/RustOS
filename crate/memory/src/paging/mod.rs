@@ -26,6 +26,7 @@ pub trait Entry {
     /// Usually this will make a flush to TLB/MMU.
     fn update(&mut self);
 
+    fn init(&mut self);
     /// Will be set when accessed
     fn accessed(&self) -> bool;
     /// Will be set when written

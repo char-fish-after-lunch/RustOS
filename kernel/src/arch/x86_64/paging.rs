@@ -103,6 +103,7 @@ impl Entry for PageEntry {
         let addr = VirtAddr::new_unchecked((self as *const _ as u64) << 9);
         flush(addr);
     }
+    fn init(&mut self) { /* do nothing */ }
     fn accessed(&self) -> bool { self.0.flags().contains(EF::ACCESSED) }
     fn dirty(&self) -> bool { self.0.flags().contains(EF::DIRTY) }
     fn writable(&self) -> bool { self.0.flags().contains(EF::WRITABLE) }
