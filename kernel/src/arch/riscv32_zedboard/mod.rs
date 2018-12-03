@@ -1,6 +1,7 @@
 extern crate riscv;
 extern crate bbl;
 
+#[macro_use]
 pub mod prm;
 pub mod io;
 pub mod interrupt;
@@ -29,6 +30,10 @@ pub extern fn rust_main(hartid: usize, dtb: usize, hart_mask: usize) -> ! {
     timer::init();
 
     ::process::init();
+    print_prm!("test\n");
+    let hello = prm::prm_getline();
+    println!("{}", hello);
+
     ::thread::spawn(::fs::shell);
 
     unsafe { cpu::start_others(hart_mask); }

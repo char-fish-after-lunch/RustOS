@@ -2,6 +2,7 @@ use core::fmt::{Write, Result, Arguments};
 use core::ptr::{read_volatile, write_volatile};
 use super::bbl::sbi;
 use spin::Mutex;
+use alloc::string::String;
 
 lazy_static! {
     static ref prm_mutex: Mutex<()> = Mutex::new(());
@@ -35,6 +36,29 @@ pub fn prm_getbyte() -> u8 {
     sbi::prm_getchar() as u8
 }
 
+pub fn prm_getline() -> String {
+    let mut s = String::new();
+    loop {
+        let c = prm_getbyte() as char;
+        match c {
+            '\u{7f}' /* '\b' */ => {
+                if s.pop().is_some() {
+                    print!("\u{7f}");
+                }
+            }
+            ' '...'\u{7e}' => {
+                s.push(c);
+                print!("{}", c);
+            }
+            '\n' | '\r' => {
+                print!("\n");
+                return s;
+            }
+            _ => {}
+        }
+    }
+}
+
 fn putfmt(fmt: Arguments) {
     PRM.write_fmt(fmt).unwrap();
 }
@@ -53,7 +77,6 @@ macro_rules! println_prm {
 }
 
 pub fn print(args: Arguments) {
-    use arch::io;
     let mutex = prm_mutex.lock();
-    io::putfmt(args);
+    putfmt(args);
 }
