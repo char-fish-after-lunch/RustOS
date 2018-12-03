@@ -1,8 +1,9 @@
 use bit_allocator::BitAlloc;
 use consts::KERNEL_OFFSET;
 // Depends on kernel
-use memory::{FRAME_ALLOCATOR, init_heap, active_table};
+use memory::{FRAME_ALLOCATOR, active_table};
 use super::{BootInfo, MemoryRegionType};
+use super::super::HEAP_ALLOCATOR;
 use ucore_memory::PAGE_SIZE;
 use ucore_memory::paging::*;
 
@@ -24,7 +25,7 @@ fn init_frame_allocator(boot_info: &BootInfo) {
     }
 }
 
-fn init_heap() {
+pub fn init_heap() {
     use consts::KERNEL_HEAP_SIZE;
     static mut HEAP: [u8; KERNEL_HEAP_SIZE] = [0; KERNEL_HEAP_SIZE];
     unsafe { HEAP_ALLOCATOR.lock().init(HEAP.as_ptr() as usize, KERNEL_HEAP_SIZE); }

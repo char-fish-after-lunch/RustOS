@@ -5,6 +5,10 @@
 
 extern volatile uint32_t* uart;
 
+#ifdef __BOARD_zedboard
+extern volatile uint32_t* uart_prm;
+#endif
+
 #define UART_REG_RXFIFO		0
 #define UART_REG_TXFIFO		1
 #define UART_REG_STAT		2
@@ -28,5 +32,10 @@ extern volatile uint32_t* uart;
 void uart_putchar(uint8_t ch);
 int uart_getchar();
 void query_uart(uintptr_t dtb);
+
+#ifdef __BOARD_zedboard
+void uart_prm_putchar(uint8_t ch);
+int uart_prm_getchar();
+#endif
 
 #endif

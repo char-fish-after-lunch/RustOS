@@ -1,5 +1,6 @@
 use core::{slice, mem};
-use memory::{active_table, FRAME_ALLOCATOR, init_heap, MemoryArea, MemoryAttr, MemorySet};
+use memory::{active_table, FRAME_ALLOCATOR, MemoryArea, MemoryAttr, MemorySet};
+use super::super::HEAP_ALLOCATOR;
 use super::riscv::{addr::*, register::sstatus};
 use ucore_memory::PAGE_SIZE;
 
@@ -54,7 +55,7 @@ fn remap_the_kernel() {
     info!("kernel remap end");
 }
 
-fn init_heap() {
+pub fn init_heap() {
     use consts::KERNEL_HEAP_SIZE;
     static mut HEAP: [u8; KERNEL_HEAP_SIZE] = [0; KERNEL_HEAP_SIZE];
     unsafe { HEAP_ALLOCATOR.lock().init(HEAP.as_ptr() as usize, KERNEL_HEAP_SIZE); }

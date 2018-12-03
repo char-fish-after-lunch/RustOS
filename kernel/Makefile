@@ -13,13 +13,13 @@
 #   mode = debug | release
 #   LOG  = off | error | warn | info | debug | trace
 #   smp                         SMP core number
-#   board 						Only available on riscv32, build without bbl, run on board
-#   zedboard 					Only available on riscv32, for LvNA-project only.
+#   board = fpga | qemu | zedboard
 
 arch ?= riscv32
 mode ?= debug
 LOG  ?= debug
 smp  ?= 4
+board ?= qemu
 
 target := $(arch)-blog_os
 kernel := target/$(target)/$(mode)/ucore
@@ -47,11 +47,11 @@ qemu_opts := \
 	-smp cores=$(smp)
 endif
 
-ifdef board
+ifeq ($(board), fpga)
 features := $(features) no_bbl
 endif
 
-ifdef zedboard
+ifeq ($(board), zedboard)
 features := $(features) zedboard
 endif
 
@@ -124,7 +124,7 @@ sym:
 	@$(objdump) -t $(kernel) | less
 
 $(bin): kernel
-ifdef board
+ifeq ($(board), fpga)
 	@cp $(kernel) $@
 else
 	@cd ../riscv-pk && \
@@ -136,7 +136,7 @@ else
 	 	--disable-fp-emulation \
 	 	--host=riscv32-unknown-elf \
 	 	--with-payload=$(abspath $(kernel)) && \
-	 make && \
+	 CFLAGS=\"-D__BOARD_$(board)\" make && \
 	 cp bbl ../../kernel/$@
 	 $(objcopy) -O binary $@ $(binary)
 endif

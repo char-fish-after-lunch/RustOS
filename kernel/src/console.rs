@@ -3,6 +3,7 @@ use alloc::string::String;
 use alloc::collections::VecDeque;
 use sync::Condvar;
 use sync::SpinNoIrqLock as Mutex;
+use arch::io;
 
 pub fn get_line() -> String {
     let mut s = String::new();
@@ -53,6 +54,12 @@ lazy_static! {
     pub static ref CONSOLE_INPUT: InputQueue = InputQueue::default();
 }
 
+#[cfg(all(target_arch = "riscv32", feature = "zedboard"))]
+pub fn get_char() -> char {
+    io::getchar()
+}
+
+#[cfg(not(all(target_arch = "riscv32", feature = "zedboard")))]
 pub fn get_char() -> char {
     CONSOLE_INPUT.pop()
 }

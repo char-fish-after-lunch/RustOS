@@ -11,6 +11,9 @@ impl Write for SerialPort {
                 putchar(8);
                 putchar(b' ');
                 putchar(8);
+            } else if c == 10 {
+                putchar(13); // \r
+                putchar(10); // \n
             } else {
                 putchar(c);
             }
