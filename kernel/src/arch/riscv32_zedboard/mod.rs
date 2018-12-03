@@ -1,6 +1,7 @@
 extern crate riscv;
 extern crate bbl;
 
+pub mod prm;
 pub mod io;
 pub mod interrupt;
 pub mod timer;

@@ -21,6 +21,14 @@ pub fn console_getchar() -> usize {
     sbi_call(SBI_CONSOLE_GETCHAR, 0, 0, 0)
 }
 
+pub fn prm_putchar(ch: usize) {
+    sbi_call(SBI_PRM_PUTCHAR, ch, 0, 0);
+}
+
+pub fn prm_getchar() -> usize {
+    sbi_call(SBI_PRM_GETCHAR, 0, 0, 0)
+}
+
 pub fn shutdown() {
     sbi_call(SBI_SHUTDOWN, 0, 0, 0);
 }
