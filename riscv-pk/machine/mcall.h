@@ -11,4 +11,9 @@
 #define SBI_REMOTE_SFENCE_VMA_ASID 7
 #define SBI_SHUTDOWN 8
 
+#ifdef __BOARD_zedboard
+#define SBI_PRM_PUTCHAR 9
+#define SBI_PRM_GETCHAR 10
+#endif
+
 #endif

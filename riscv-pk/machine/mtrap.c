@@ -180,6 +180,15 @@ send_ipi:
       redirect_trap(read_csr(mepc), read_csr(mstatus), read_csr(mbadaddr));
       retval = -ENOSYS;
       break;
+#ifdef __BOARD_zedboard
+    case SBI_PRM_PUTCHAR:
+      uart_prm_putchar(arg0);
+      retval = 0;
+      break;
+    case SBI_PRM_GETCHAR:
+      retval = uart_prm_getchar();
+      break;
+#endif
   }
   regs[10] = retval;
 }
