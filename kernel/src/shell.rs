@@ -4,6 +4,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use crate::fs::{ROOT_INODE, INodeExt};
 use crate::process::*;
+use crate::arch::io;
 
 pub fn run_user_shell() {
     let inode = ROOT_INODE.lookup("sh").unwrap();
@@ -55,6 +56,12 @@ fn get_line() -> String {
     }
 }
 
+#[cfg(feature = "board_zedboard")]
+fn get_char() -> char {
+    io::getchar()
+}
+
+#[cfg(not(feature = "board_zedboard"))]
 fn get_char() -> char {
     crate::fs::STDIN.pop()
 }

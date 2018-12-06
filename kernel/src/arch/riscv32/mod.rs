@@ -34,7 +34,7 @@ pub extern fn rust_main(hartid: usize, dtb: usize, hart_mask: usize) -> ! {
     crate::process::init();
 
     #[cfg(feature = "board_zedboard")]
-    board::prm::test_prm();
+    board::lvna::test_prm();
 
     unsafe { cpu::start_others(hart_mask); }
     println!("Hello RISCV! in hart {}, {}, {}", hartid, dtb, hart_mask);
