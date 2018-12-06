@@ -11,9 +11,10 @@ use alloc::collections::BTreeMap;
 use core::marker::PhantomData;
 use core::ptr;
 use core::time::Duration;
-use processor::*;
-use process_manager::*;
-use scheduler::Scheduler;
+use log::*;
+use crate::processor::*;
+use crate::process_manager::*;
+use crate::scheduler::Scheduler;
 
 #[linkage = "weak"]
 #[no_mangle]
@@ -32,9 +33,7 @@ fn new_kernel_context(entry: extern fn(usize) -> !, arg: usize) -> Box<Context> 
 
 /// Gets a handle to the thread that invokes it.
 pub fn current() -> Thread {
-    Thread {
-        pid: processor().pid(),
-    }
+    Thread { pid: processor().pid() }
 }
 
 /// Puts the current thread to sleep for the specified amount of time.
@@ -96,7 +95,7 @@ pub fn spawn<F, T>(f: F) -> JoinHandle<T>
 
     // 在Processor中创建新的线程
     let context = new_kernel_context(kernel_thread_entry::<F, T>, f as usize);
-    let pid = processor().manager().add(context);
+    let pid = processor().manager().add(context, 0);
 
     // 接下来看看`JoinHandle::join()`的实现
     // 了解是如何获取f返回值的
@@ -149,6 +148,7 @@ impl<T> JoinHandle<T> {
     /// Waits for the associated thread to finish.
     pub fn join(self) -> Result<T, ()> {
         loop {
+            trace!("{} join", self.thread.pid);
             match processor().manager().get_status(self.thread.pid) {
                 Some(Status::Exited(exit_code)) => {
                     processor().manager().remove(self.thread.pid);
@@ -160,6 +160,13 @@ impl<T> JoinHandle<T> {
             }
             processor().manager().wait(current().id(), self.thread.pid);
             processor().yield_now();
+        }
+    }
+    /// Force construct a JoinHandle struct
+    pub unsafe fn _of(pid: Pid) -> JoinHandle<T> {
+        JoinHandle {
+            thread: Thread { pid },
+            mark: PhantomData,
         }
     }
 }
