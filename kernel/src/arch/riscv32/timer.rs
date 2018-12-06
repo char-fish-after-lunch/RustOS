@@ -54,11 +54,11 @@ pub fn set_next() {
 *   set time for timer interrupt
 */
 fn set_timer(t: u64) {
-    #[cfg(feature = "no_bbl")]
+    #[cfg(feature = "board_fpga")]
     unsafe {
         asm!("csrw 0x321, $0; csrw 0x322, $1"
         : : "r"(t as u32), "r"((t >> 32) as u32) : : "volatile");
     }
-    #[cfg(not(feature = "no_bbl"))]
+    #[cfg(not(feature = "board_fpga"))]
     sbi::set_timer(t);
 }

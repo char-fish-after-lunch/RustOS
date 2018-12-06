@@ -1,10 +1,19 @@
 use core::{slice, mem};
-use memory::{active_table, FRAME_ALLOCATOR, MemoryArea, MemoryAttr, MemorySet};
 use super::super::HEAP_ALLOCATOR;
 use riscv::{addr::*, register::sstatus};
 use ucore_memory::PAGE_SIZE;
 use log::*;
 use crate::memory::{active_table, FRAME_ALLOCATOR, init_heap, MemoryArea, MemoryAttr, MemorySet};
+
+pub fn clear_bss() {
+    unsafe {
+        let bss_start = sbss as usize;
+        let bss_end = ebss as usize;
+        for i in bss_start..bss_end {
+            *(i as *mut u8) = 0;
+        }
+    }
+}
 
 /*
 * @brief:
@@ -67,7 +76,7 @@ fn init_frame_allocator() {
 */
 fn remap_the_kernel() {
     let mut ms = MemorySet::new_bare();
-    #[cfg(feature = "no_bbl")]
+    #[cfg(feature = "board_fpga")]
     ms.push(MemoryArea::new_identity(0x10000000, 0x10000008, MemoryAttr::default(), "serial"));
     ms.push(MemoryArea::new_identity(stext as usize, etext as usize, MemoryAttr::default().execute().readonly(), "text"));
     ms.push(MemoryArea::new_identity(sdata as usize, edata as usize, MemoryAttr::default(), "data"));
@@ -77,13 +86,6 @@ fn remap_the_kernel() {
     unsafe { SATP = ms.token(); }
     mem::forget(ms);
     info!("kernel remap end");
-}
-
-pub fn init_heap() {
-    use consts::KERNEL_HEAP_SIZE;
-    static mut HEAP: [u8; KERNEL_HEAP_SIZE] = [0; KERNEL_HEAP_SIZE];
-    unsafe { HEAP_ALLOCATOR.lock().init(HEAP.as_ptr() as usize, KERNEL_HEAP_SIZE); }
-    info!("heap init end");
 }
 
 // First core stores its SATP here.

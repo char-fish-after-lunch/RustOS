@@ -6,8 +6,9 @@ edition = "2018"
 
 [features]
 link_user_program = []
-no_bbl = []
-zedboard = []
+board_fpga = []
+board_qemu = []
+board_zedboard = []
 board_raspi3 = []
 
 [profile.dev]

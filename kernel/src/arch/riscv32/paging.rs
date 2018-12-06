@@ -27,9 +27,17 @@ pub fn setup_page_table(frame: Frame) {
     // 0x10000000 ~ 1K area
     p2.map_identity(0x40, EF::VALID | EF::READABLE | EF::WRITABLE);
     // 0x80000000 ~ 12M area 
-    p2.map_identity(KERNEL_P2_INDEX, EF::VALID | EF::READABLE | EF::WRITABLE | EF::EXECUTABLE);
-    p2.map_identity(KERNEL_P2_INDEX + 1, EF::VALID | EF::READABLE | EF::WRITABLE | EF::EXECUTABLE);
-    p2.map_identity(KERNEL_P2_INDEX + 2, EF::VALID | EF::READABLE | EF::WRITABLE | EF::EXECUTABLE);
+
+
+    #[cfg(not(feature = "board_zedboard"))]
+    let flags = EF::VALID | EF::READABLE | EF::WRITABLE | EF::EXECUTABLE;
+
+    #[cfg(feature = "board_zedboard")]
+    let flags = EF::VALID | EF::READABLE | EF::WRITABLE | EF::EXECUTABLE | EF::ACCESSED | EF::DIRTY;
+
+    p2.map_identity(KERNEL_P2_INDEX, flags);
+    p2.map_identity(KERNEL_P2_INDEX + 1, flags);
+    p2.map_identity(KERNEL_P2_INDEX + 2, flags);
 
     use riscv::register::satp;
     unsafe { satp::set(satp::Mode::Sv32, 0, frame); }
@@ -55,7 +63,13 @@ impl PageTable for ActivePageTable {
     */
     fn map(&mut self, addr: usize, target: usize) -> &mut PageEntry {
         // the flag for the new page entry
+
+        #[cfg(not(feature = "board_zedboard"))]
         let flags = EF::VALID | EF::READABLE | EF::WRITABLE;
+        
+        #[cfg(feature = "board_zedboard")]
+        let flags = EF::VALID | EF::READABLE | EF::WRITABLE | EF::ACCESSED | EF::DIRTY;
+
         // here page is for the virtual address while frame is for the physical, both of them is 4096 bytes align
         let page = Page::of_addr(VirtAddr::new(addr));
         let frame = Frame::of_addr(PhysAddr::new(target as u32));
@@ -172,7 +186,12 @@ impl Entry for PageEntry {
         let addr = VirtAddr::new((self as *const _ as usize) << 10);
         sfence_vma(0, addr);
     }
-    fn init(&mut self) { /* do nothing */ }
+
+    fn init(&mut self) {
+        #[cfg(feature = "board_zedboard")]
+        self.0.flags().set(EF::ACCESSED, true); self.0.flags().set(EF::DIRTY, true);
+    }
+
     fn accessed(&self) -> bool { self.0.flags().contains(EF::ACCESSED) }
     fn dirty(&self) -> bool { self.0.flags().contains(EF::DIRTY) }
     fn writable(&self) -> bool { self.0.flags().contains(EF::WRITABLE) }
@@ -256,7 +275,8 @@ impl InactivePageTable for InactivePageTable0 {
             let backup = p2_table[RECURSIVE_INDEX].clone();
 
             // overwrite recursive mapping
-            p2_table[RECURSIVE_INDEX].set(self.p2_frame.clone(), EF::VALID);
+             
+            p2_table[RECURSIVE_INDEX].set(self.p2_frame.clone(), EF::VALID | EF::ACCESSED | EF::DIRTY);
             sfence_vma_all();
 
             // execute f in the new context
@@ -336,18 +356,23 @@ impl InactivePageTable0 {
         let e0 = table[0x40];
         let e1 = table[KERNEL_P2_INDEX];
         assert!(!e1.is_unused());
-        // for larger heap memroy
+        // for larger heap memory
         let e2 = table[KERNEL_P2_INDEX + 1];
         assert!(!e2.is_unused());
         let e3 = table[KERNEL_P2_INDEX + 2];
-        assert!(!e2.is_unused());
+        assert!(!e3.is_unused());
 
         self.edit(|_| {
+            #[cfg(not(feature = "board_zedboard"))]
+            let flags = EF::VALID | EF::GLOBAL;
+            #[cfg(feature = "board_zedboard")]
+            let flags = EF::VALID | EF::GLOBAL | EF::ACCESSED | EF::DIRTY;
+
             table[0x40] = e0;
-            table[KERNEL_P2_INDEX].set(e1.frame(), EF::VALID | EF::GLOBAL);
-            // for larger heap memroy
-            table[KERNEL_P2_INDEX + 1].set(e2.frame(), EF::VALID | EF::GLOBAL);
-            table[KERNEL_P2_INDEX + 2].set(e3.frame(), EF::VALID | EF::GLOBAL);
+            table[KERNEL_P2_INDEX].set(e1.frame(), flags);
+            // for larger heap memory
+            table[KERNEL_P2_INDEX + 1].set(e2.frame(), flags);
+            table[KERNEL_P2_INDEX + 2].set(e3.frame(), flags);
         });
     }
 }

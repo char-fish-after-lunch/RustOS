@@ -165,11 +165,25 @@ pub fn page_fault_handler(addr: usize) -> bool {
     false
 }
 
+#[cfg(target_arch = "riscv32")]
+pub fn init_heap() {
+    use crate::consts::KERNEL_HEAP_SIZE;
+    unsafe { HEAP_ALLOCATOR.lock().init(kernelheap as usize, KERNEL_HEAP_SIZE); }
+    info!("heap init end");
+}
+
+#[cfg(not(target_arch = "riscv32"))]
 pub fn init_heap() {
     use crate::consts::KERNEL_HEAP_SIZE;
     static mut HEAP: [u8; KERNEL_HEAP_SIZE] = [0; KERNEL_HEAP_SIZE];
     unsafe { HEAP_ALLOCATOR.lock().init(HEAP.as_ptr() as usize, KERNEL_HEAP_SIZE); }
     info!("heap init end");
+}
+
+
+#[cfg(target_arch = "riscv32")]
+extern {
+    fn kernelheap();
 }
 
 //pub mod test {

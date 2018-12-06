@@ -60,18 +60,6 @@ ifdef d
 qemu_opts := $(qemu_opts) -d $(d)
 endif
 
-### build args ###
-ifeq ($(arch), riscv32)
-ifeq ($(board), fpga)
-features := $(features) no_bbl
-endif
-
-ifeq ($(board), zedboard)
-features := $(features) zedboard
-endif
-endif
-
-
 # Link user binaries at ../user
 ifdef link_user
 features := $(features) link_user_program
@@ -143,22 +131,22 @@ sym:
 
 $(bin): kernel
 ifeq ($(arch), riscv32)
-	ifeq ($(board), fpga)
-		@cp $(kernel) $@
-	else
-		@cd ../riscv-pk && \
-		mkdir -p build && \
-		cd build && \
-		../configure \
-			--enable-32bit \
-			--enable-logo \
-			--disable-fp-emulation \
-			--host=riscv32-unknown-elf \
-			--with-payload=$(abspath $(kernel)) && \
-		CFLAGS=\"-D__BOARD_$(board)\" make && \
-		cp bbl ../../kernel/$@
-		$(objcopy) -O binary $@ $(binary)
-	endif
+ifeq ($(board), fpga)
+	@cp $(kernel) $@
+else
+	@cd ../riscv-pk && \
+	mkdir -p build && \
+	cd build && \
+	../configure \
+		--enable-32bit \
+		--enable-logo \
+		--disable-fp-emulation \
+		--host=riscv32-unknown-elf \
+		--with-payload=$(abspath $(kernel)) && \
+	CFLAGS=\"-D__BOARD_$(board)\" make && \
+	cp bbl ../../kernel/$@
+	$(objcopy) -O binary $@ $(binary)
+endif
 else ifeq ($(arch), aarch64)
 	@$(objcopy) $(kernel) --strip-all -O binary $@
 endif

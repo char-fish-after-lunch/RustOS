@@ -38,12 +38,9 @@ mod shell;
 #[path = "arch/x86_64/mod.rs"]
 pub mod arch;
 
-#[cfg(all(target_arch = "riscv32", not(feature = "zedboard")))]
+#[cfg(all(target_arch = "riscv32"))]
 #[path = "arch/riscv32/mod.rs"]
 pub mod arch;
-
-#[cfg(all(target_arch = "riscv32", feature = "zedboard"))]
-#[path = "arch/riscv32_zedboard/mod.rs"]
 
 #[cfg(target_arch = "aarch64")]
 #[path = "arch/aarch64/mod.rs"]

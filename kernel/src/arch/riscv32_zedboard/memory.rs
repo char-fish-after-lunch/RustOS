@@ -1,5 +1,5 @@
 use core::{slice, mem};
-use memory::{active_table, FRAME_ALLOCATOR, MemoryArea, MemoryAttr, MemorySet};
+use crate::memory::{active_table, FRAME_ALLOCATOR, init_heap, MemoryArea, MemoryAttr, MemorySet};
 use super::super::HEAP_ALLOCATOR;
 use super::riscv::{addr::*, register::sstatus};
 use ucore_memory::PAGE_SIZE;
@@ -65,13 +65,6 @@ fn remap_the_kernel() {
     info!("kernel remap end");
 }
 
-pub fn init_heap() {
-    use consts::{KERNEL_HEAP_SIZE, KERNEL_HEAP_OFFSET};
-    unsafe { HEAP_ALLOCATOR.lock().init(kernelheap as usize, KERNEL_HEAP_SIZE); }
-    
-    info!("heap init end");
-}
-
 // First core stores its SATP here.
 // Other cores load it later.
 static mut SATP: usize = 0;
@@ -90,5 +83,4 @@ extern {
     fn end();
     fn bootstack();
     fn bootstacktop();
-    fn kernelheap();
 }

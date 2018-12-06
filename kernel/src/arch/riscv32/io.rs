@@ -11,6 +11,9 @@ impl Write for SerialPort {
                 putchar(8);
                 putchar(b' ');
                 putchar(8);
+            } else if c == 10 {
+                putchar(13); // \r
+                putchar(10); // \n
             } else {
                 putchar(c);
             }
@@ -20,22 +23,22 @@ impl Write for SerialPort {
 }
 
 fn putchar(c: u8) {
-    #[cfg(feature = "no_bbl")]
+    #[cfg(feature = "board_fpga")]
     unsafe {
         while read_volatile(STATUS) & CAN_WRITE == 0 {}
         write_volatile(DATA, c as u8);
     }
-    #[cfg(not(feature = "no_bbl"))]
+    #[cfg(not(feature = "board_fpga"))]
     sbi::console_putchar(c as usize);
 }
 
 pub fn getchar() -> char {
-    #[cfg(feature = "no_bbl")]
+    #[cfg(feature = "board_fpga")]
     let c = unsafe {
         while read_volatile(STATUS) & CAN_READ == 0 {}
         read_volatile(DATA)
     };
-    #[cfg(not(feature = "no_bbl"))]
+    #[cfg(not(feature = "board_fpga"))]
     let c = sbi::console_getchar() as u8;
 
     match c {
